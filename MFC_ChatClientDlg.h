@@ -5,6 +5,8 @@
 #pragma once
 #include "CMySocket.h"
 
+#define SEND_MAX_BUF  1024
+
 // CMFCChatClientDlg 对话框
 class CMFCChatClientDlg : public CDialogEx
 {
@@ -40,10 +42,14 @@ public:
 	afx_msg void OnBnClickedClear();
 	afx_msg void OnBnClickedConnectBtn();
 
+	CString CatStringShow(CString strInfo, CString strMsg);
+
 	CMySocket* m_client;
 	CListBox m_list;
 
-	CTime m_tm;  //实时时间
+	//CTime m_tm;  //实时时间  //已经作为临时变量
 	CEdit m_input;
 	afx_msg void OnBnClickedSendBtn();
+	afx_msg void OnBnClickedChangnamebtn();
+	afx_msg void OnBnClickedClearBtn();
 };

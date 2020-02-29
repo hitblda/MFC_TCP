@@ -71,6 +71,8 @@ BEGIN_MESSAGE_MAP(CMFCChatClientDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_CONNECT_BTN, &CMFCChatClientDlg::OnBnClickedConnectBtn)
 	ON_BN_CLICKED(IDC_SEND_BTN, &CMFCChatClientDlg::OnBnClickedSendBtn)
+	ON_BN_CLICKED(IDC_ChangNameBtn, &CMFCChatClientDlg::OnBnClickedChangnamebtn)
+	ON_BN_CLICKED(IDC_CLEAR_BTN, &CMFCChatClientDlg::OnBnClickedClearBtn)
 END_MESSAGE_MAP()
 
 
@@ -110,6 +112,36 @@ BOOL CMFCChatClientDlg::OnInitDialog()
 	//初始化对话框里面的原始值
 	GetDlgItem(IDC_PORT_EDIT)->SetWindowTextW(_T("8000"));
 	GetDlgItem(IDC_IPADDRESS1)->SetWindowTextW(_T("127.0.0.1"));
+
+	/********************************************************************/
+	//	读取配置文件	
+
+	//获取当前路径
+	WCHAR wszName[MAX_PATH] = { 0 }; //LPCWSTR 类型字符串
+	WCHAR wszPath[MAX_PATH] = { 0 };
+	GetCurrentDirectoryW(MAX_PATH, wszPath);
+//	TRACE("###strPath = %ls", wszPath);
+
+	CString strFilePath;
+	strFilePath.Format(L"%ls//Test.ini", wszPath);  //ini是配置文件
+	DWORD dwNum = GetPrivateProfileStringW(_T("CLIENT"), _T("NAME"),NULL, 
+		wszName, MAX_PATH, strFilePath);
+
+	//是否读到，给出日志
+//	TRACE("### wszName =%ls , strFilePath = %ls", wszName, strFilePath);
+	if (dwNum <= 0)
+	{
+		TRACE("###  配置文件不存在 ！自动设置名称 ");
+		WritePrivateProfileStringW(_T("CLIENT"), _T("NAME"), L"YourName", strFilePath);
+		SetDlgItemText(IDC_NAME_EDIT, L"YourName");
+		UpdateData(FALSE); //更新控件中的内容
+	}
+	else
+	{
+		//将读到的内容放到控件中
+		SetDlgItemText(IDC_NAME_EDIT, wszName);
+		UpdateData(FALSE); //更新控件中的内容
+	}
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -164,14 +196,10 @@ HCURSOR CMFCChatClientDlg::OnQueryDragIcon()
 }
 
 
-
 void CMFCChatClientDlg::OnCbnSelchangeCombo1()
 {
 	// TODO: 在此添加控件通知处理程序代码
 }
-
-
-
 
 void CMFCChatClientDlg::OnBnClickedConnectBtn()
 {
@@ -200,18 +228,6 @@ void CMFCChatClientDlg::OnBnClickedConnectBtn()
 		TRACE("m_client Create failed %d", GetLastError());  //容错处理
 		return;
 	}
-	//else
-	//{
-	//	TRACE("m_client Create Success !!!!!Congratulations!!!! ");  //容错处理
-	//}
-
-	//连接
-	;
-	//if (!m_client->Connect(strIP, iPort))
-	//{
-	//	TRACE("m_client Connect failed %d", GetLastError());  
-	//	return;
-	//}
 	
 	if (m_client->Connect(strIP, iPort) == SOCKET_ERROR)   //因为连接不是马上就完成
 	{
@@ -221,7 +237,17 @@ void CMFCChatClientDlg::OnBnClickedConnectBtn()
 	//连接的时候会触发CMySocket里面的 回调函数
 }
 
-
+CString CMFCChatClientDlg::CatStringShow(CString strInfo,CString strMsg)
+{
+	//消息内容：时间  我  内容
+	CString strTime;
+	CTime tmNow = CTime::GetCurrentTime();
+	strTime = tmNow.Format("%X");
+	CString strShow = strTime;
+	//strShow += L" " + strInfo;
+	strShow += L" " + strMsg;
+	return strShow;
+}
 
 
 void CMFCChatClientDlg::OnBnClickedSendBtn()
@@ -231,27 +257,72 @@ void CMFCChatClientDlg::OnBnClickedSendBtn()
 	//Step1 获取编辑框的内容
 	CString strTmpMsg;
 	GetDlgItem(IDC_SENDMSG_EDIT)->GetWindowTextW(strTmpMsg);
+	CString strName;
+	GetDlgItemTextW(IDC_NAME_EDIT, strName);
+	strName = strName + L":";
+	strTmpMsg = strName + strTmpMsg;
 
 	USES_CONVERSION;
 	char* szSendBuf = T2A(strTmpMsg);
 
 	//step2 发送给服务器端
-	m_client->Send(szSendBuf, 200, 0); 
+	m_client->Send(szSendBuf, SEND_MAX_BUF, 0);
 
 	//Step3 显示到列表框
-	CString strShow = _T(" 我: ");
-	CString strTime;
-	m_tm = CTime::GetCurrentTime();
-	strTime = m_tm.Format("%X");
+	//CString strInfo = _T(" 我: ");
+	CString strShow = CatStringShow(strName, strTmpMsg);
 
-	//发送的内容：时间  我  内容
-	strShow = strTime + strShow;
-	strShow += strTmpMsg;
 	m_list.AddString(strShow);
 	UpdateData(FALSE);
 	
 	//清空编辑框
 	GetDlgItem(IDC_SENDMSG_EDIT)->SetWindowTextW(_T(""));
+}
 
 
+void CMFCChatClientDlg::OnBnClickedChangnamebtn()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	WCHAR strPath[MAX_PATH] = { 0 };
+	CString strName;
+	GetDlgItemText(IDC_NAME_EDIT, strName); //把控件上面的内容读取到变量strName
+	if (strName.GetLength() <= 0)
+	{
+		MessageBox(L"昵称不能为空 ！");
+		return;
+	}
+
+	/*如果修改的名字和已经有的名字重复，就不修改*/
+	CString strFilePath;
+	WCHAR wszName[MAX_PATH] = { 0 };
+	//获取当前路径
+	GetCurrentDirectoryW(MAX_PATH, strPath);
+	strFilePath.Format(L"%ls//Test.ini", strPath);  //ini是配置文件
+	GetPrivateProfileStringW(_T("CLIENT"), _T("NAME"), NULL, wszName, MAX_PATH, strFilePath);
+	if (strName == wszName)
+	{
+		MessageBox(L"名字一样，没有修改！");
+		return;
+	}
+
+	if (IDOK == AfxMessageBox(L"真的要修改昵称吗？", MB_OKCANCEL))
+	{
+	//保存昵称
+//		TRACE("###strPath = %ls", strPath);
+
+		//将获取的控件名字写入路径里面
+		WritePrivateProfileStringW(_T("CLIENT"), _T("NAME"), strName, strFilePath);
+		//第一个参数：项名
+		//第二个参数：键名
+		//第三个参数：写入的内容
+		//第四个参数：文件路径
+		TRACE("###strName = %ls", strName);
+	}
+}
+
+
+void CMFCChatClientDlg::OnBnClickedClearBtn()
+{
+	m_list.ResetContent();
+	// TODO: 在此添加控件通知处理程序代码
 }

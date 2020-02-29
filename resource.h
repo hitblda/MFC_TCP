@@ -16,9 +16,11 @@
 #define IDC_SENDMSG_EDIT                1006
 #define IDC_COLORCOMBO                  1007
 #define IDC_MSG_LIST1                   1008
-#define IDC_AUTOAPPLY                   1009
+#define IDC_AUTOANS_CHK                 1009
 #define IDC_PORT_EDIT2                  1010
 #define IDC_IPADDRESS1                  1010
+#define IDC_NAME_EDIT                   1011
+#define IDC_ChangNameBtn                1012
 
 // Next default values for new objects
 // 
@@ -26,7 +28,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1011
+#define _APS_NEXT_CONTROL_VALUE         1014
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
