@@ -7,6 +7,7 @@
 #include "MFC_ChatClient.h"
 #include "MFC_ChatClientDlg.h"
 #include "afxdialogex.h"
+#include <atlbase.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -54,17 +55,22 @@ CMFCChatClientDlg::CMFCChatClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MFC_CHATCLIENT_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+
 }
 
 void CMFCChatClientDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_MSG_LIST1, m_list);
+	DDX_Control(pDX, IDC_SENDMSG_EDIT, m_input);
 }
 
 BEGIN_MESSAGE_MAP(CMFCChatClientDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_CONNECT_BTN, &CMFCChatClientDlg::OnBnClickedConnectBtn)
+	ON_BN_CLICKED(IDC_SEND_BTN, &CMFCChatClientDlg::OnBnClickedSendBtn)
 END_MESSAGE_MAP()
 
 
@@ -100,6 +106,10 @@ BOOL CMFCChatClientDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+
+	//初始化对话框里面的原始值
+	GetDlgItem(IDC_PORT_EDIT)->SetWindowTextW(_T("8000"));
+	GetDlgItem(IDC_IPADDRESS1)->SetWindowTextW(_T("127.0.0.1"));
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -161,3 +171,87 @@ void CMFCChatClientDlg::OnCbnSelchangeCombo1()
 }
 
 
+
+
+void CMFCChatClientDlg::OnBnClickedConnectBtn()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	TRACE("##Connect ........... ");
+
+	//Step1 获取IP和端口
+	CString strPort, strIP;
+	//从控件获取
+	GetDlgItem(IDC_PORT_EDIT)->GetWindowTextW(strPort);
+	GetDlgItem(IDC_IPADDRESS1)->GetWindowTextW(strIP);
+
+	//CString 转char*
+	USES_CONVERSION;
+	LPCSTR szPort = (LPCSTR)T2A(strPort);
+	LPCSTR szIP = (LPCSTR)T2A(strIP);
+
+	TRACE("szPort = %s , szIP = %s", szPort, szIP);
+
+	int iPort = _ttoi(strPort);  //把CString类型的转换为数字
+
+	//创建一个对象
+	m_client = new CMySocket;
+	if (!m_client->Create())
+	{
+		TRACE("m_client Create failed %d", GetLastError());  //容错处理
+		return;
+	}
+	//else
+	//{
+	//	TRACE("m_client Create Success !!!!!Congratulations!!!! ");  //容错处理
+	//}
+
+	//连接
+	;
+	//if (!m_client->Connect(strIP, iPort))
+	//{
+	//	TRACE("m_client Connect failed %d", GetLastError());  
+	//	return;
+	//}
+	
+	if (m_client->Connect(strIP, iPort) == SOCKET_ERROR)   //因为连接不是马上就完成
+	{
+		TRACE("m_client Create failed %d", GetLastError());  //容错处理
+		return;
+	}
+	//连接的时候会触发CMySocket里面的 回调函数
+}
+
+
+
+
+void CMFCChatClientDlg::OnBnClickedSendBtn()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	
+	//Step1 获取编辑框的内容
+	CString strTmpMsg;
+	GetDlgItem(IDC_SENDMSG_EDIT)->GetWindowTextW(strTmpMsg);
+
+	USES_CONVERSION;
+	char* szSendBuf = T2A(strTmpMsg);
+
+	//step2 发送给服务器端
+	m_client->Send(szSendBuf, 200, 0); 
+
+	//Step3 显示到列表框
+	CString strShow = _T(" 我: ");
+	CString strTime;
+	m_tm = CTime::GetCurrentTime();
+	strTime = m_tm.Format("%X");
+
+	//发送的内容：时间  我  内容
+	strShow = strTime + strShow;
+	strShow += strTmpMsg;
+	m_list.AddString(strShow);
+	UpdateData(FALSE);
+	
+	//清空编辑框
+	GetDlgItem(IDC_SENDMSG_EDIT)->SetWindowTextW(_T(""));
+
+
+}
